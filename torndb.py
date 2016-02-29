@@ -120,6 +120,22 @@ class Connection(object):
         self._db = MySQLdb.connect(**self._db_args)
         self._db.autocommit(True)
 
+    def transaction(self, query, *parameters, **kwparameters):
+        self._db.begin()
+        cursor = self._cursor()
+        status = True
+        try:
+            for sql in query:
+                cursor.execute(sql, kwparameters or parameters)
+            self._db.commit()
+        except OperationalError, e:
+            self._db.rollback()
+            status = False
+            raise Exception(e.args[1], e.args[0])
+        finally:
+            cursor.close()
+        return status
+
     def iter(self, query, *parameters, **kwparameters):
         """Returns an iterator for the given query and parameters."""
         self._ensure_connected()
